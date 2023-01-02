@@ -5,3 +5,4 @@ mask_rcnn_R_101_FPN_3x
 examples
 *.pth
 *.sh
+*.mp4
