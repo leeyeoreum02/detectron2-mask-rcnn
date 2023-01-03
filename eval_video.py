@@ -26,19 +26,20 @@ def eval_video(video_path: os.PathLike = SAMPLE_VIDEO_PATH) -> None:
     frame_height = round(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     num_frames = round(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     
-    out = cv2.VideoWriter('Output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), target_fps, (frame_width, frame_height))
+    out = cv2.VideoWriter('Output-R101.mp4', cv2.VideoWriter_fourcc(*'mp4v'), target_fps, (frame_width, frame_height))  # r101
+    # out = cv2.VideoWriter('Output.mp4', cv2.VideoWriter_fourcc(*'mp4v'), target_fps, (frame_width, frame_height))  # r50
     
     register_acod()
     
     cfg = get_cfg()
-    cfg.merge_from_file(model_zoo.get_config_file('COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml'))  # r50
-    # cfg.merge_from_file(model_zoo.get_config_file('COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml'))  # r101
+    # cfg.merge_from_file(model_zoo.get_config_file('COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml'))  # r50
+    cfg.merge_from_file(model_zoo.get_config_file('COCO-InstanceSegmentation/mask_rcnn_R_101_FPN_3x.yaml'))  # r101
     
     cfg.DATASETS.TRAIN = (TRAIN_DATA_NAME,)
     
     cfg.DATALOADER.NUM_WORKERS = 1
-    cfg.MODEL.WEIGHTS = 'mask_rcnn_R_50_FPN_3x/model_0005999.pth'  # r50
-    # cfg.MODEL.WEIGHTS = 'model_0003999.pth'  # r101
+    # cfg.MODEL.WEIGHTS = 'mask_rcnn_R_50_FPN_3x/model_0005999.pth'  # r50
+    cfg.MODEL.WEIGHTS = 'model_0003999.pth'  # r101
     
     cfg.MODEL.ROI_HEADS.NUM_CLASSES = 10
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.3
@@ -48,6 +49,7 @@ def eval_video(video_path: os.PathLike = SAMPLE_VIDEO_PATH) -> None:
     print('setup finished.')
     
     i = 0
+    final_fps = 0
     while(cap.isOpened()):
         ret, frame = cap.read()
     
@@ -60,9 +62,11 @@ def eval_video(video_path: os.PathLike = SAMPLE_VIDEO_PATH) -> None:
             end_time = time.time()
 
             fps = 1 / (end_time - start_time)
-            print(f'FPS: {fps:.1f}, frame: {i+1}/{num_frames}', end='\r')
+            print(f'FPS: {fps:04.1f}, frame: {i+1}/{num_frames}', end='\r')
             
-            v = Visualizer(frame[:,:,::-1], MetadataCatalog.get(cfg.DATASETS.TRAIN[0]), instance_mode=ColorMode.IMAGE_BW)
+            final_fps += fps
+            
+            v = Visualizer(frame[:,:,::-1], MetadataCatalog.get(cfg.DATASETS.TRAIN[0]))
             v = v.draw_instance_predictions(outputs['instances'].to('cpu'))
             v = v.get_image()[:, :, ::-1]
             out.write(v)
@@ -74,7 +78,7 @@ def eval_video(video_path: os.PathLike = SAMPLE_VIDEO_PATH) -> None:
         else:
             break
     
-    print('\nfinish')
+    print(f'\nfinish. final_fps: {final_fps / num_frames:04.1f}')
     cap.release()
     out.release()
     cv2.destroyAllWindows()
